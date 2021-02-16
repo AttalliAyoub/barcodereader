@@ -35,7 +35,9 @@ typedef BarcodereaderChild = Widget Function(Function tap);
 class Barcodereader extends StatefulWidget {
   final CameraController controller;
   final CloseAcinot closeAcinot;
-  Barcodereader(this.controller, this.closeAcinot);
+  Barcodereader(this.controller, this.closeAcinot, {Key key})
+      : assert(controller?.value != null),
+        super(key: key);
 
   // static Future<String> get platformVersion async {
   //   final String version = await _channel.invokeMethod('getPlatformVersion');
@@ -63,6 +65,8 @@ class Barcodereader extends StatefulWidget {
     // String path = '';
     return OpenContainer<Barcode>(
       closedBuilder: (context, action) {
+        controller?.dispose();
+        controller = null;
         return closedBuilder(() async {
           controller = await _controller(resolution);
           // final p = await getTemporaryDirectory();
@@ -76,6 +80,7 @@ class Barcodereader extends StatefulWidget {
         });
       },
       openBuilder: (context, action) {
+        assert(controller?.value != null);
         return Barcodereader(
           controller,
           // path,
@@ -122,6 +127,7 @@ class Barcodereader extends StatefulWidget {
       camearDes,
       resolution,
       enableAudio: false,
+      // imageFormatGroup: ImageFormatGroup.
       // autoFocusMode: AutoFocusMode.auto,
       // flashMode: FlashMode.off,
     );
