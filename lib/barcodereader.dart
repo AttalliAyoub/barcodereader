@@ -65,8 +65,6 @@ class Barcodereader extends StatefulWidget {
     // String path = '';
     return OpenContainer<Barcode>(
       closedBuilder: (context, action) {
-        controller?.dispose();
-        controller = null;
         return closedBuilder(() async {
           controller = await _controller(resolution);
           // final p = await getTemporaryDirectory();
