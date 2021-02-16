@@ -1,0 +1,29 @@
+name: barcodereader
+description: A new flutter plugin project.
+version: 0.0.1
+author: Attalli Ayoub <attalliayoub50@gmail.com>
+homepage: https://github.com/AttalliAyoub/barcodereader.git
+
+environment:
+  sdk: ">=2.7.0 <3.0.0"
+  flutter: ">=1.20.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  native_device_orientation: ^0.4.3
+  animations: ^1.1.2
+  camera: ^0.7.0+2
+  rxdart: ^0.25.0
+  screen: ^0.0.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.ayoub.barcodereader
+        pluginClass: BarcodereaderPlugin
