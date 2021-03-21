@@ -8,18 +8,29 @@ class Barcode {
   @override
   String toString() => json.toString();
 
-  Barcode(dynamic data)
-      : text = data['text'],
-        resultPoints = data['resultPoints'] != null
-            ? List.from(data['resultPoints'])
-                .map((p) => Map<String, double>.from(p))
-                .toList()
-            : null,
-        format = data['format'],
-        resultMetadata = data['resultMetadata'] != null
-            ? Map<String, dynamic>.from(data['resultMetadata'])
-            : null,
-        timestamp = DateTime.fromMillisecondsSinceEpoch(data['timestamp']);
+  Barcode({
+    this.format,
+    this.resultMetadata,
+    this.text,
+    this.resultPoints,
+    this.timestamp,
+  });
+
+  factory Barcode.fromMap(dynamic data) {
+    return Barcode(
+      text: data['text'],
+      resultPoints: data['resultPoints'] != null
+          ? List.from(data['resultPoints'])
+              .map((p) => Map<String, double>.from(p))
+              .toList()
+          : null,
+      format: data['format'],
+      resultMetadata: data['resultMetadata'] != null
+          ? Map<String, dynamic>.from(data['resultMetadata'])
+          : null,
+      timestamp: DateTime.fromMillisecondsSinceEpoch(data['timestamp']),
+    );
+  }
 
   Map<String, dynamic> get json => {
         if (text != null) 'text': text,

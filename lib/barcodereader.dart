@@ -3,12 +3,14 @@ import 'dart:async';
 // import 'dart:io';
 import 'dart:math';
 import 'dart:ui';
+import 'package:firebase_ml_vision/firebase_ml_vision.dart' as MLVision;
 import 'package:flutter/services.dart';
 import 'package:animations/animations.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 // import 'package:flutter/services.dart';
+import 'conver_format_ml.dart';
 import 'interfaces.dart';
 // import 'package:hanoti/services/pushNotification.dart';
 // import 'package:hanoti/services/resp.dart';
@@ -35,7 +37,9 @@ typedef BarcodereaderChild = Widget Function(Function tap);
 class Barcodereader extends StatefulWidget {
   final CameraController controller;
   final CloseAcinot closeAcinot;
-  Barcodereader(this.controller, this.closeAcinot, {Key key})
+  final bool useMlVision;
+  Barcodereader(this.controller, this.closeAcinot,
+      {this.useMlVision = false, Key key})
       : assert(controller?.value != null),
         super(key: key);
 
@@ -143,6 +147,8 @@ class BarcodereaderState extends State<Barcodereader> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   bool flash = false, hasFlash = false;
   static const _CHANNEL = const MethodChannel('com.ayoub.barcodereader');
+  static final mlBarcodeDetector =
+      MLVision.FirebaseVision.instance.barcodeDetector();
 
   num angle = 0.0;
   StreamSubscription<NativeDeviceOrientation> sub;
@@ -379,16 +385,37 @@ class BarcodereaderState extends State<Barcodereader> {
     // path = path.replaceAll('barcode${n ? 1 : 2}', 'barcode${n ? 2 : 1}');
     if (!mounted) return;
     final file = await widget.controller.takePicture();
-    try {
-      final data = await _CHANNEL
-          .invokeMapMethod<String, dynamic>('barcode', {'path': file.path});
-      if (data != null) {
-        final barcode = Barcode(data);
-        widget.closeAcinot(barcode);
+    if (widget.useMlVision) {
+      try {
+        final visionImage =
+            MLVision.FirebaseVisionImage.fromFilePath(file.path);
+        final barcodes = await mlBarcodeDetector.detectInImage(visionImage);
+        final barcode = barcodes.firstWhere((e) => true, orElse: () => null);
+        if (barcode == null) throw 'error';
+        final b = Barcode(
+          format: barcodeFormatToString(barcode?.format),
+          text: barcode?.rawValue,
+          // resultMetadata: barcode.
+          // resultPoints: await
+          timestamp: DateTime.now(),
+        );
+        widget.closeAcinot(b);
+      } catch (err) {
+        print({'err': err});
       }
-    } catch (err) {
-      print({'err': err});
+    } else {
+      try {
+        final data = await _CHANNEL
+            .invokeMapMethod<String, dynamic>('barcode', {'path': file.path});
+        if (data != null) {
+          final barcode = Barcode.fromMap(data);
+          widget.closeAcinot(barcode);
+        }
+      } catch (err) {
+        print({'err': err});
+      }
     }
+
     tacking = false;
   }
 
