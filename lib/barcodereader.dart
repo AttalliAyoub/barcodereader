@@ -61,6 +61,7 @@ class Barcodereader extends StatefulWidget {
     @required CloseAcinot closeAcinot,
     // Widget loading,
     bool tappable = true,
+    bool useMlVision = false,
     ResolutionPreset resolution = ResolutionPreset.medium,
     Duration transitionDuration = const Duration(milliseconds: 300),
     ContainerTransitionType transitionType = ContainerTransitionType.fade,
@@ -85,8 +86,8 @@ class Barcodereader extends StatefulWidget {
         assert(controller?.value != null);
         return Barcodereader(
           controller,
-          // path,
           (baarcode) => action(returnValue: baarcode),
+          useMlVision: useMlVision,
         );
       },
       useRootNavigator: false,
