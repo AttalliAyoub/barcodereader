@@ -29,17 +29,19 @@ class _MyAppState extends State<MyApp> {
                 closedShape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
                 closedBuilder: (open) {
-                  return FlatButton(
-                    height: 60,
-                    color: Theme.of(context).primaryColor,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                  return TextButton(
+                    style: TextButton.styleFrom(
+                      textStyle: TextStyle(color: Colors.white),
+                      onSurface: Theme.of(context).primaryColor,
+                      minimumSize: Size.fromHeight(60),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
                     onPressed: open,
-                    textColor: Colors.white,
                     child: Text('Open Scanner'),
                   );
                 },
-                closeAcinot: (barcode) {
+                closeAction: (barcode) {
                   setState(() {
                     this.barcode = barcode;
                   });
