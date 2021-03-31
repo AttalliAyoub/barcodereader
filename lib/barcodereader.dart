@@ -379,6 +379,7 @@ class BarcodereaderState extends State<Barcodereader> {
 
   // String path;
   bool tacking = false;
+  bool closed = false;
 
   // void camearStream() async {
   void _streamLisnner(CameraImage image) async {
@@ -426,7 +427,11 @@ class BarcodereaderState extends State<Barcodereader> {
           // resultPoints: await
           timestamp: DateTime.now(),
         );
-        widget.closeAcinot(b);
+        if (!closed) {
+          widget.closeAcinot(b);
+          closed = true;
+          widget.controller.stopImageStream();
+        }
       } catch (err) {
         print({'err': err});
       }
@@ -448,7 +453,11 @@ class BarcodereaderState extends State<Barcodereader> {
         });
         if (data != null) {
           final barcode = Barcode.fromMap(data);
-          widget.closeAcinot(barcode);
+          if (!closed) {
+            widget.closeAcinot(barcode);
+            closed = true;
+            widget.controller.stopImageStream();
+          }
         }
       } catch (err) {
         print({'err': err});
