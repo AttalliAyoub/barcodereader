@@ -32,15 +32,15 @@ export 'interfaces.dart';
 //   }
 // }
 
-typedef CloseAcinot = void Function(Barcode barcode);
+typedef CloseAction = void Function(Barcode barcode);
 
 typedef BarcodereaderChild = Widget Function(Function tap);
 
 class Barcodereader extends StatefulWidget {
   final CameraController controller;
-  final CloseAcinot closeAcinot;
+  final CloseAction closeAction;
   final bool useMlVision;
-  Barcodereader(this.controller, this.closeAcinot,
+  Barcodereader(this.controller, this.closeAction,
       {this.useMlVision = false, Key key})
       : assert(controller?.value != null),
         super(key: key);
@@ -60,7 +60,7 @@ class Barcodereader extends StatefulWidget {
         borderRadius: BorderRadius.all(Radius.circular(4.0))),
     ShapeBorder openShape = const RoundedRectangleBorder(),
     @required BarcodereaderChild closedBuilder,
-    @required CloseAcinot closeAcinot,
+    @required CloseAction closeAction,
     // Widget loading,
     bool tappable = true,
     bool useMlVision = false,
@@ -95,7 +95,7 @@ class Barcodereader extends StatefulWidget {
       useRootNavigator: false,
       closedColor: closedColor,
       closedElevation: closedElevation,
-      onClosed: closeAcinot,
+      onClosed: closeAction,
       closedShape: closedShape,
       key: key,
       openColor: openColor,
@@ -215,7 +215,12 @@ class BarcodereaderState extends State<Barcodereader> {
   }
 
   void _dispose() async {
-    await widget.controller.stopImageStream();
+    try {
+      await widget.controller.stopImageStream();
+    } catch (err) {
+      print(err);
+    }
+    widget.controller.setFlashMode(FlashMode.off);
     await widget.controller.dispose();
     await Future.wait([
       Screen.keepOn(false),
@@ -316,7 +321,7 @@ class BarcodereaderState extends State<Barcodereader> {
                         color: Colors.white,
                         icon: Icon(Icons.cancel),
                         onPressed: () {
-                          widget.closeAcinot(null);
+                          widget.closeAction(null);
                         }),
                   ),
                 ),
@@ -428,7 +433,7 @@ class BarcodereaderState extends State<Barcodereader> {
           timestamp: DateTime.now(),
         );
         if (!closed) {
-          widget.closeAcinot(b);
+          widget.closeAction(b);
           closed = true;
           widget.controller.stopImageStream();
         }
@@ -454,7 +459,7 @@ class BarcodereaderState extends State<Barcodereader> {
         if (data != null) {
           final barcode = Barcode.fromMap(data);
           if (!closed) {
-            widget.closeAcinot(barcode);
+            widget.closeAction(barcode);
             closed = true;
             widget.controller.stopImageStream();
           }
