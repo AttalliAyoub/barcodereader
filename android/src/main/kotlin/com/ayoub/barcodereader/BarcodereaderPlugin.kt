@@ -1,18 +1,18 @@
 package com.ayoub.barcodereader
 
-import android.graphics.BitmapFactory
+import android.graphics.ImageFormat
 import androidx.annotation.NonNull
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
-import io.flutter.plugin.common.PluginRegistry.Registrar
+
 
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.MultiFormatReader
 import com.google.zxing.NotFoundException
-import com.google.zxing.RGBLuminanceSource
+import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 
 /** BarcodereaderPlugin */
@@ -30,11 +30,12 @@ class BarcodereaderPlugin: FlutterPlugin, MethodCallHandler {
   override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
     when(call.method) {
       "barcode" -> {
-        val path = call.argument<String>("path")!!
-        val image = BitmapFactory.decodeFile(path)
-        val pixels = IntArray(image.width * image.height)
-        image.getPixels(pixels, 0, image.width, 0, 0, image.width, image.height)
-        val source = RGBLuminanceSource(image.width, image.height, pixels)
+        // val path = call.argument<String>("path")!!
+        val format = call.argument<ImageFormat>("format")!!
+        val height = call.argument<Int>("height")!!
+        val width = call.argument<Int>("width")!!
+        val bytes = call.argument<ByteArray>("bytes")!!
+        val source = PlanarYUVLuminanceSource(bytes, width, height, 0, 0, width, height, false)
         val bitmap = BinaryBitmap(HybridBinarizer(source))
         try {
           val r = reader.decode(bitmap)

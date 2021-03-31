@@ -25,6 +25,7 @@ class _MyAppState extends State<MyApp> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Barcodereader.widget(
+                useMlVision: false,
                 closedShape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
                 closedBuilder: (open) {

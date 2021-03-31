@@ -2,6 +2,8 @@ import 'dart:async';
 // import 'dart:async';
 // import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
+// import 'package:image'
 import 'dart:ui';
 import 'package:firebase_ml_vision/firebase_ml_vision.dart' as MLVision;
 import 'package:flutter/services.dart';
@@ -128,8 +130,10 @@ class Barcodereader extends StatefulWidget {
         _cameras.firstWhere((c) => c.lensDirection == CameraLensDirection.back);
     final _controller = CameraController(
       camearDes,
+
       resolution,
       enableAudio: false,
+
       // imageFormatGroup: ImageFormatGroup.
       // autoFocusMode: AutoFocusMode.auto,
       // flashMode: FlashMode.off,
@@ -162,6 +166,7 @@ class BarcodereaderState extends State<Barcodereader> {
   void initState() {
     super.initState();
     Screen.keepOn(true);
+    widget.controller.startImageStream(_streamLisnner);
     role();
     SystemChrome.setEnabledSystemUIOverlays([]);
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
@@ -210,6 +215,7 @@ class BarcodereaderState extends State<Barcodereader> {
   }
 
   void _dispose() async {
+    await widget.controller.stopImageStream();
     await widget.controller.dispose();
     await Future.wait([
       Screen.keepOn(false),
@@ -232,11 +238,11 @@ class BarcodereaderState extends State<Barcodereader> {
   }
 
   showSnackBar(String str) {
-    _scaffoldKey.currentState.showSnackBar(SnackBar(
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(str),
       action: SnackBarAction(
         label: 'Dismiss',
-        onPressed: () => _scaffoldKey.currentState.hideCurrentSnackBar(),
+        onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
       ),
     ));
   }
@@ -269,7 +275,8 @@ class BarcodereaderState extends State<Barcodereader> {
           return Stack(
             alignment: Alignment.center,
             fit: StackFit.expand,
-            overflow: Overflow.clip,
+            // overflow: Overflow.clip,
+            clipBehavior: Clip.hardEdge,
             children: <Widget>[
               Align(
                 alignment: Alignment.center,
@@ -362,22 +369,22 @@ class BarcodereaderState extends State<Barcodereader> {
 
   void role() {
     timer = Timer.periodic(const Duration(milliseconds: 300), (t) {
-      // _captureImage();
       if (align.value == Alignment.topCenter) {
         align.add(Alignment.bottomCenter);
       } else {
         align.add(Alignment.topCenter);
       }
-      if (!tacking && widget.controller.value.isInitialized && mounted)
-        camearStream();
     });
   }
 
   // String path;
   bool tacking = false;
 
-  void camearStream() async {
+  // void camearStream() async {
+  void _streamLisnner(CameraImage image) async {
+    if (tacking) return;
     tacking = true;
+    // startImageStream
     // try {
     //   final f = File(path);
     //   f.exists().then((v) => v ? f.delete() : null);
@@ -385,11 +392,30 @@ class BarcodereaderState extends State<Barcodereader> {
     // final n = path.contains('barcode1');
     // path = path.replaceAll('barcode${n ? 1 : 2}', 'barcode${n ? 2 : 1}');
     if (!mounted) return;
-    final file = await widget.controller.takePicture();
+    // final file = await widget.controller.takePicture();
     if (widget.useMlVision) {
       try {
-        final visionImage =
-            MLVision.FirebaseVisionImage.fromFilePath(file.path);
+        final visionImage = MLVision.FirebaseVisionImage.fromBytes(
+          image.planes[0].bytes,
+          MLVision.FirebaseVisionImageMetadata(
+            rawFormat: image.format.raw,
+            size: Size(image.width.toDouble(), image.height.toDouble()),
+            planeData: image.planes.map((p) {
+              return MLVision.FirebaseVisionImagePlaneMetadata(
+                bytesPerRow: p.bytesPerRow,
+                height: p.height,
+                width: p.width,
+              );
+            }).toList(),
+            rotation: (() {
+              if (pi / 2 == angle) return MLVision.ImageRotation.rotation90;
+              if (-pi / 2 == angle) return MLVision.ImageRotation.rotation270;
+              if (0.0 == angle) return MLVision.ImageRotation.rotation0;
+              if (pi == angle) return MLVision.ImageRotation.rotation180;
+              return MLVision.ImageRotation.rotation0;
+            })(),
+          ),
+        );
         final barcodes = await mlBarcodeDetector.detectInImage(visionImage);
         final barcode = barcodes.firstWhere((e) => true, orElse: () => null);
         if (barcode == null) throw 'error';
@@ -406,8 +432,20 @@ class BarcodereaderState extends State<Barcodereader> {
       }
     } else {
       try {
-        final data = await _CHANNEL
-            .invokeMapMethod<String, dynamic>('barcode', {'path': file.path});
+        final data =
+            await _CHANNEL.invokeMapMethod<String, dynamic>('barcode', {
+          'format': image.format.raw,
+          'height': image.height,
+          'width': image.width,
+          'bytes': image.planes[0].bytes,
+          // 'planes': image.planes.map((p) {
+          //   return {
+          //     'bytes': p.bytes,
+          //     'bytesPerPixel': p.bytesPerPixel,
+          //     'bytesPerRow': p.bytesPerRow,
+          //   };
+          // }).toList(),
+        });
         if (data != null) {
           final barcode = Barcode.fromMap(data);
           widget.closeAcinot(barcode);
@@ -416,60 +454,6 @@ class BarcodereaderState extends State<Barcodereader> {
         print({'err': err});
       }
     }
-
     tacking = false;
   }
-
-  // treatBarcode(Barcode barcode) {
-  //   final Rect boundingBox = barcode.boundingBox;
-  //   final List<Offset> cornerPoints = barcode.cornerPoints;
-  //   final String rawValue = barcode.rawValue;
-  //   final BarcodeValueType valueType = barcode.valueType;
-  //   // See API reference for complete list of supported types
-  //   switch (valueType) {
-  //     case BarcodeValueType.wifi:
-  //       final String ssid = barcode.wifi.ssid;
-  //       final String password = barcode.wifi.password;
-  //       final BarcodeWiFiEncryptionType type = barcode.wifi.encryptionType;
-  //       break;
-  //     case BarcodeValueType.url:
-  //       final String title = barcode.url.title;
-  //       final String url = barcode.url.url;
-  //       break;
-  //     case BarcodeValueType.unknown:
-  //       // TODO: Handle this case.
-  //       break;
-  //     case BarcodeValueType.contactInfo:
-  //       // TODO: Handle this case.
-  //       break;
-  //     case BarcodeValueType.email:
-  //       // TODO: Handle this case.
-  //       break;
-  //     case BarcodeValueType.isbn:
-  //       // TODO: Handle this case.
-  //       break;
-  //     case BarcodeValueType.phone:
-  //       // TODO: Handle this case.
-  //       break;
-  //     case BarcodeValueType.product:
-  //       // TODO: Handle this case.
-  //       break;
-  //     case BarcodeValueType.sms:
-  //       // TODO: Handle this case.
-  //       break;
-  //     case BarcodeValueType.text:
-  //       // TODO: Handle this case.
-  //       break;
-  //     case BarcodeValueType.geographicCoordinates:
-  //       // TODO: Handle this case.
-  //       break;
-  //     case BarcodeValueType.calendarEvent:
-  //       // TODO: Handle this case.
-  //       break;
-  //     case BarcodeValueType.driverLicense:
-  //       // TODO: Handle this case.
-  //       break;
-  //   }
-  // }
-
 }
