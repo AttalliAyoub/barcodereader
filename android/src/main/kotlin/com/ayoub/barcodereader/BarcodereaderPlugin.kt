@@ -31,7 +31,7 @@ class BarcodereaderPlugin: FlutterPlugin, MethodCallHandler {
     when(call.method) {
       "barcode" -> {
         // val path = call.argument<String>("path")!!
-        val format = call.argument<ImageFormat>("format")!!
+        val format = call.argument<Int>("format")!!
         val height = call.argument<Int>("height")!!
         val width = call.argument<Int>("width")!!
         val bytes = call.argument<ByteArray>("bytes")!!
