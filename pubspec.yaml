@@ -15,7 +15,7 @@ dependencies:
   animations: ^2.0.0
   camera: ^0.8.1
   screen: ^0.0.5
-  firebase_ml_vision: ^0.11.0
+  firebase_ml_vision: ^0.12.0+1
   rxdart:
 
 dev_dependencies:
