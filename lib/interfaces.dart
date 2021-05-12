@@ -1,9 +1,12 @@
+import 'conver_format_ml.dart';
+
 class Barcode {
   String text;
   List<Map<String, double>> resultPoints;
   String format;
   Map<String, dynamic> resultMetadata;
   DateTime timestamp;
+  String barcodeType;
 
   @override
   String toString() => json.toString();
@@ -14,6 +17,7 @@ class Barcode {
     this.text,
     this.resultPoints,
     this.timestamp,
+    this.barcodeType,
   });
 
   factory Barcode.fromMap(dynamic data) {
@@ -29,6 +33,7 @@ class Barcode {
           ? Map<String, dynamic>.from(data['resultMetadata'])
           : null,
       timestamp: DateTime.fromMillisecondsSinceEpoch(data['timestamp']),
+      barcodeType: barcodeType2String(data['barcodeType'])
     );
   }
 
@@ -38,5 +43,6 @@ class Barcode {
         if (format != null) 'format': format,
         if (resultMetadata != null) 'resultMetadata': resultMetadata,
         if (timestamp != null) 'timestamp': timestamp,
+        if (barcodeType != null) 'barcodeType': barcodeType,
       };
 }

@@ -35,8 +35,25 @@ class BarcodereaderPlugin: FlutterPlugin, MethodCallHandler {
         val height = call.argument<Int>("height")!!
         val width = call.argument<Int>("width")!!
         val bytes = call.argument<ByteArray>("bytes")!!
-        val source = PlanarYUVLuminanceSource(bytes, width, height, 0, 0, width, height, false)
-        val bitmap = BinaryBitmap(HybridBinarizer(source))
+        val rotation = call.argument<Int>("rotation")!!
+        var source = PlanarYUVLuminanceSource(bytes, width, height, 0, 0, width, height, false)
+        if (source!!.isRotateSupported()) {
+          when(rotation) {
+            1: -> {
+              source = source!!.rotateCounterClockwise()
+            }
+            2: -> {
+              source = source!!.rotateCounterClockwise()
+                .rotateCounterClockwise()
+            }
+            3: -> {
+              source = source!!.rotateCounterClockwise()
+              !!.rotateCounterClockwise()
+              !!.rotateCounterClockwise()
+            }
+          }
+        }
+        val bitmap = BinaryBitmap(HybridBinarizer(source!!))
         try {
           val r = reader.decode(bitmap)
           if (r != null) {

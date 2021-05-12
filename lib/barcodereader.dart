@@ -2,10 +2,11 @@ import 'dart:async';
 // import 'dart:async';
 // import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
+// import 'dart:typed_data';
 // import 'package:image'
 import 'dart:ui';
-import 'package:firebase_ml_vision/firebase_ml_vision.dart' as MLVision;
+import 'package:google_ml_kit/google_ml_kit.dart' as MLVision;
+// import 'package:firebase_ml_vision/firebase_ml_vision.dart' as MLVision;
 import 'package:flutter/services.dart';
 import 'package:animations/animations.dart';
 import 'package:camera/camera.dart';
@@ -152,8 +153,22 @@ class BarcodereaderState extends State<Barcodereader> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   bool flash = false, hasFlash = false;
   static const _CHANNEL = const MethodChannel('com.ayoub.barcodereader');
-  static final mlBarcodeDetector =
-      MLVision.FirebaseVision.instance.barcodeDetector();
+  static final mlBarcodeDetector = MLVision.GoogleMlKit.vision.barcodeScanner([
+    MLVision.Barcode.FORMAT_Default,
+    MLVision.Barcode.FORMAT_Code_128,
+    MLVision.Barcode.FORMAT_Code_39,
+    MLVision.Barcode.FORMAT_Code_93,
+    MLVision.Barcode.FORMAT_Codabar,
+    MLVision.Barcode.FORMAT_EAN_13,
+    MLVision.Barcode.FORMAT_EAN_8,
+    MLVision.Barcode.FORMAT_ITF,
+    MLVision.Barcode.FORMAT_UPC_A,
+    MLVision.Barcode.FORMAT_UPC_E,
+    MLVision.Barcode.FORMAT_QR_Code,
+    MLVision.Barcode.FORMAT_PDF417,
+    MLVision.Barcode.FORMAT_Aztec,
+    MLVision.Barcode.FORMAT_Data_Matrix,
+  ]);
 
   num angle = 0.0;
   StreamSubscription<NativeDeviceOrientation> sub;
@@ -401,35 +416,55 @@ class BarcodereaderState extends State<Barcodereader> {
     // final file = await widget.controller.takePicture();
     if (widget.useMlVision) {
       try {
-        final visionImage = MLVision.FirebaseVisionImage.fromBytes(
-          image.planes[0].bytes,
-          MLVision.FirebaseVisionImageMetadata(
-            rawFormat: image.format.raw,
-            size: Size(image.width.toDouble(), image.height.toDouble()),
-            planeData: image.planes.map((p) {
-              return MLVision.FirebaseVisionImagePlaneMetadata(
-                bytesPerRow: p.bytesPerRow,
-                height: p.height,
-                width: p.width,
-              );
-            }).toList(),
-            rotation: (() {
-              if (pi / 2 == angle) return MLVision.ImageRotation.rotation90;
-              if (-pi / 2 == angle) return MLVision.ImageRotation.rotation270;
-              if (0.0 == angle) return MLVision.ImageRotation.rotation0;
-              if (pi == angle) return MLVision.ImageRotation.rotation180;
-              return MLVision.ImageRotation.rotation0;
-            })(),
-          ),
+        final visionImage = MLVision.InputImage.fromBytes(
+          bytes: image.planes[0].bytes,
+          inputImageData: MLVision.InputImageData(
+              size: Size(image.width.toDouble(), image.height.toDouble()),
+              imageRotation: (() {
+                if (pi / 2 == angle)
+                  return MLVision.InputImageRotation.Rotation_90deg;
+                if (-pi / 2 == angle)
+                  return MLVision.InputImageRotation.Rotation_270deg;
+                if (0.0 == angle)
+                  return MLVision.InputImageRotation.Rotation_0deg;
+                if (pi == angle)
+                  return MLVision.InputImageRotation.Rotation_180deg;
+                return MLVision.InputImageRotation.Rotation_0deg;
+              })(),
+              inputImageFormat: (() {
+                if (image.format.group == ImageFormatGroup.yuv420)
+                  return MLVision.InputImageFormat.YUV_420_888;
+                return MLVision.InputImageFormat.NV21;
+              })()),
         );
-        final barcodes = await mlBarcodeDetector.detectInImage(visionImage);
+        // final visionImage = MLVision.FirebaseVisionImage.fromBytes(
+        //   image.planes[0].bytes,
+        //   MLVision.FirebaseVisionImageMetadata(
+        //     rawFormat: image.format.raw,
+        //     size: Size(image.width.toDouble(), image.height.toDouble()),
+        //     planeData: image.planes.map((p) {
+        //       return MLVision.FirebaseVisionImagePlaneMetadata(
+        //         bytesPerRow: p.bytesPerRow,
+        //         height: p.height,
+        //         width: p.width,
+        //       );
+        //     }).toList(),
+        //     rotation: (() {
+        //       if (pi / 2 == angle) return MLVision.ImageRotation.rotation90;
+        //       if (-pi / 2 == angle) return MLVision.ImageRotation.rotation270;
+        //       if (0.0 == angle) return MLVision.ImageRotation.rotation0;
+        //       if (pi == angle) return MLVision.ImageRotation.rotation180;
+        //       return MLVision.ImageRotation.rotation0;
+        //     })(),
+        //   ),
+        // );
+        final List<MLVision.Barcode> barcodes =
+            await mlBarcodeDetector.processImage(visionImage);
         final barcode = barcodes.firstWhere((e) => true, orElse: () => null);
         if (barcode == null) throw 'error';
         final b = Barcode(
-          format: barcodeFormatToString(barcode?.format),
-          text: barcode?.rawValue,
-          // resultMetadata: barcode.
-          // resultPoints: await
+          text: barcodeData(barcode).rawValue,
+          barcodeType: barcodeType2String(barcode.barcodeType),
           timestamp: DateTime.now(),
         );
         if (!closed) {
@@ -448,6 +483,17 @@ class BarcodereaderState extends State<Barcodereader> {
           'height': image.height,
           'width': image.width,
           'bytes': image.planes[0].bytes,
+          'rotation': (() {
+            if (pi / 2 == angle)
+              return MLVision.InputImageRotation.Rotation_90deg.index;
+            if (-pi / 2 == angle)
+              return MLVision.InputImageRotation.Rotation_270deg.index;
+            if (0.0 == angle)
+              return MLVision.InputImageRotation.Rotation_0deg.index;
+            if (pi == angle)
+              return MLVision.InputImageRotation.Rotation_180deg.index;
+            return MLVision.InputImageRotation.Rotation_0deg.index;
+          })(),
           // 'planes': image.planes.map((p) {
           //   return {
           //     'bytes': p.bytes,
