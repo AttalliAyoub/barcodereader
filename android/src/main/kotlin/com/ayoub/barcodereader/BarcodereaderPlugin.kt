@@ -2,6 +2,7 @@ package com.ayoub.barcodereader
 
 import android.graphics.ImageFormat
 import androidx.annotation.NonNull
+import com.google.zxing.*
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -9,10 +10,6 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 
 
-import com.google.zxing.BinaryBitmap
-import com.google.zxing.MultiFormatReader
-import com.google.zxing.NotFoundException
-import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 
 /** BarcodereaderPlugin */
@@ -36,24 +33,19 @@ class BarcodereaderPlugin: FlutterPlugin, MethodCallHandler {
         val width = call.argument<Int>("width")!!
         val bytes = call.argument<ByteArray>("bytes")!!
         val rotation = call.argument<Int>("rotation")!!
-        var source = PlanarYUVLuminanceSource(bytes, width, height, 0, 0, width, height, false)
-        if (source!!.isRotateSupported()) {
+        val source = PlanarYUVLuminanceSource(bytes, width, height, 0, 0, width, height, false)
+        var rotated: LuminanceSource = source
+        if (source.isRotateSupported) {
           when(rotation) {
-            1: -> {
-              source = source!!.rotateCounterClockwise()
-            }
-            2: -> {
-              source = source!!.rotateCounterClockwise()
-                .rotateCounterClockwise()
-            }
-            3: -> {
-              source = source!!.rotateCounterClockwise()
-              !!.rotateCounterClockwise()
-              !!.rotateCounterClockwise()
-            }
+            1 -> rotated = source.rotateCounterClockwise()
+            2 -> rotated = source.rotateCounterClockwise()
+                    .rotateCounterClockwise()
+            3 -> rotated = source.rotateCounterClockwise()
+                    .rotateCounterClockwise()
+                    .rotateCounterClockwise()
           }
         }
-        val bitmap = BinaryBitmap(HybridBinarizer(source!!))
+        val bitmap = BinaryBitmap(HybridBinarizer(if (source.isRotateSupported && rotation > 0) source else rotated))
         try {
           val r = reader.decode(bitmap)
           if (r != null) {
