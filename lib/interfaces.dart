@@ -22,19 +22,18 @@ class Barcode {
 
   factory Barcode.fromMap(dynamic data) {
     return Barcode(
-      text: data['text'],
-      resultPoints: data['resultPoints'] != null
-          ? List.from(data['resultPoints'])
-              .map((p) => Map<String, double>.from(p))
-              .toList()
-          : null,
-      format: data['format'],
-      resultMetadata: data['resultMetadata'] != null
-          ? Map<String, dynamic>.from(data['resultMetadata'])
-          : null,
-      timestamp: DateTime.fromMillisecondsSinceEpoch(data['timestamp']),
-      barcodeType: barcodeType2String(data['barcodeType'])
-    );
+        text: data['text'],
+        resultPoints: data['resultPoints'] != null
+            ? List.from(data['resultPoints'])
+                .map((p) => Map<String, double>.from(p))
+                .toList()
+            : null,
+        format: data['format'],
+        resultMetadata: data['resultMetadata'] != null
+            ? Map<String, dynamic>.from(data['resultMetadata'])
+            : null,
+        timestamp: DateTime.fromMillisecondsSinceEpoch(data['timestamp']),
+        barcodeType: barcodeType2String(data['barcodeType']));
   }
 
   Map<String, dynamic> get json => {

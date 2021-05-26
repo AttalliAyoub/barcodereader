@@ -1,25 +1,18 @@
 import 'dart:async';
-// import 'dart:async';
-// import 'dart:io';
 import 'dart:math';
-// import 'dart:typed_data';
-// import 'package:image'
 import 'dart:ui';
 import 'package:google_ml_kit/google_ml_kit.dart' as MLVision;
-// import 'package:firebase_ml_vision/firebase_ml_vision.dart' as MLVision;
 import 'package:flutter/services.dart';
 import 'package:animations/animations.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-// import 'package:flutter/services.dart';
 import 'conver_format_ml.dart';
 import 'interfaces.dart';
-// import 'package:hanoti/services/pushNotification.dart';
-// import 'package:hanoti/services/resp.dart';
 import 'package:native_device_orientation/native_device_orientation.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:screen/screen.dart';
+import 'utils.dart';
 
 export 'package:camera/camera.dart' show ResolutionPreset;
 export 'interfaces.dart';
@@ -153,29 +146,10 @@ class BarcodereaderState extends State<Barcodereader> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   bool flash = false, hasFlash = false;
   static const _CHANNEL = const MethodChannel('com.ayoub.barcodereader');
-  static final mlBarcodeDetector = MLVision.GoogleMlKit.vision.barcodeScanner([
-    MLVision.Barcode.FORMAT_Default,
-    MLVision.Barcode.FORMAT_Code_128,
-    MLVision.Barcode.FORMAT_Code_39,
-    MLVision.Barcode.FORMAT_Code_93,
-    MLVision.Barcode.FORMAT_Codabar,
-    MLVision.Barcode.FORMAT_EAN_13,
-    MLVision.Barcode.FORMAT_EAN_8,
-    MLVision.Barcode.FORMAT_ITF,
-    MLVision.Barcode.FORMAT_UPC_A,
-    MLVision.Barcode.FORMAT_UPC_E,
-    MLVision.Barcode.FORMAT_QR_Code,
-    MLVision.Barcode.FORMAT_PDF417,
-    MLVision.Barcode.FORMAT_Aztec,
-    MLVision.Barcode.FORMAT_Data_Matrix,
-  ]);
+  static final mlBarcodeDetector = MLVision.GoogleMlKit.vision.barcodeScanner();
 
   num angle = 0.0;
   StreamSubscription<NativeDeviceOrientation> sub;
-
-  // BarcodereaderState() {
-  //   path = widget.path;
-  // }
 
   @override
   void initState() {
@@ -235,7 +209,7 @@ class BarcodereaderState extends State<Barcodereader> {
     } catch (err) {
       print(err);
     }
-    widget.controller.setFlashMode(FlashMode.off);
+    await widget.controller.setFlashMode(FlashMode.off);
     await widget.controller.dispose();
     await Future.wait([
       Screen.keepOn(false),
@@ -417,49 +391,24 @@ class BarcodereaderState extends State<Barcodereader> {
     if (widget.useMlVision) {
       try {
         final visionImage = MLVision.InputImage.fromBytes(
-          bytes: image.planes[0].bytes,
-          inputImageData: MLVision.InputImageData(
-              size: Size(image.width.toDouble(), image.height.toDouble()),
-              imageRotation: (() {
-                if (pi / 2 == angle)
-                  return MLVision.InputImageRotation.Rotation_90deg;
-                if (-pi / 2 == angle)
-                  return MLVision.InputImageRotation.Rotation_270deg;
-                if (0.0 == angle)
-                  return MLVision.InputImageRotation.Rotation_0deg;
-                if (pi == angle)
-                  return MLVision.InputImageRotation.Rotation_180deg;
+          bytes: concatenatePlanes(image.planes),
+          inputImageData: buildMetaData(
+            image,
+            (() {
+              if (pi / 2 == angle)
+                return MLVision.InputImageRotation.Rotation_90deg;
+              if (-pi / 2 == angle)
+                return MLVision.InputImageRotation.Rotation_270deg;
+              if (0.0 == angle)
                 return MLVision.InputImageRotation.Rotation_0deg;
-              })(),
-              inputImageFormat: (() {
-                if (image.format.group == ImageFormatGroup.yuv420)
-                  return MLVision.InputImageFormat.YUV_420_888;
-                return MLVision.InputImageFormat.NV21;
-              })()),
+              if (pi == angle)
+                return MLVision.InputImageRotation.Rotation_180deg;
+              return MLVision.InputImageRotation.Rotation_0deg;
+            })(),
+          ),
         );
-        // final visionImage = MLVision.FirebaseVisionImage.fromBytes(
-        //   image.planes[0].bytes,
-        //   MLVision.FirebaseVisionImageMetadata(
-        //     rawFormat: image.format.raw,
-        //     size: Size(image.width.toDouble(), image.height.toDouble()),
-        //     planeData: image.planes.map((p) {
-        //       return MLVision.FirebaseVisionImagePlaneMetadata(
-        //         bytesPerRow: p.bytesPerRow,
-        //         height: p.height,
-        //         width: p.width,
-        //       );
-        //     }).toList(),
-        //     rotation: (() {
-        //       if (pi / 2 == angle) return MLVision.ImageRotation.rotation90;
-        //       if (-pi / 2 == angle) return MLVision.ImageRotation.rotation270;
-        //       if (0.0 == angle) return MLVision.ImageRotation.rotation0;
-        //       if (pi == angle) return MLVision.ImageRotation.rotation180;
-        //       return MLVision.ImageRotation.rotation0;
-        //     })(),
-        //   ),
-        // );
-        final List<MLVision.Barcode> barcodes =
-            await mlBarcodeDetector.processImage(visionImage);
+
+        final barcodes = await mlBarcodeDetector.processImage(visionImage);
         final barcode = barcodes.firstWhere((e) => true, orElse: () => null);
         if (barcode == null) throw 'error';
         final b = Barcode(
