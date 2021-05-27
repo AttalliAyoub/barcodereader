@@ -11,7 +11,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  Barcode barcode;
+  List<String> barcode;
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -24,6 +24,30 @@ class _MyAppState extends State<MyApp> {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
+              Barcodereader.widget(
+                useMlVision: false,
+                resolution: ResolutionPreset.high,
+                closedShape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                closedBuilder: (open) {
+                  return TextButton(
+                    style: TextButton.styleFrom(
+                      textStyle: TextStyle(color: Colors.white),
+                      onSurface: Theme.of(context).primaryColor,
+                      minimumSize: Size.fromHeight(60),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: open,
+                    child: Text('Open Scanner Kotlin'),
+                  );
+                },
+                closeAction: (barcode) {
+                  setState(() {
+                    this.barcode = barcode;
+                  });
+                },
+              ),
               Barcodereader.widget(
                 useMlVision: true,
                 resolution: ResolutionPreset.high,
@@ -39,7 +63,7 @@ class _MyAppState extends State<MyApp> {
                           borderRadius: BorderRadius.circular(10)),
                     ),
                     onPressed: open,
-                    child: Text('Open Scanner'),
+                    child: Text('Open Scanner ML'),
                   );
                 },
                 closeAction: (barcode) {

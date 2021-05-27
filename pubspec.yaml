@@ -11,11 +11,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  native_device_orientation: ^1.0.0
   animations: ^2.0.0
   camera: ^0.8.1
   screen: ^0.0.5
-  google_ml_kit: ^0.4.0
+  # scan: ^1.4.3
+  # zxing2: ^0.1.0
+
   rxdart:
 
 dev_dependencies:

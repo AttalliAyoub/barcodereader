@@ -39,14 +39,9 @@
             </intent-filter>
         </activity>
 
-        <meta-data
+        <!-- <meta-data
           android:name="com.google.firebase.ml.vision.DEPENDENCIES"
-          android:value="barcode" />
-      <meta-data
-              android:name="com.google.mlkit.vision.DEPENDENCIES"
-              android:value="barcode" />
-        <!-- Don't delete the meta-data below.
-             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+          android:value="barcode" /> -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

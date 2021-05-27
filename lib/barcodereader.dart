@@ -1,32 +1,23 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:typed_data';
 import 'dart:ui';
-import 'package:google_ml_kit/google_ml_kit.dart' as MLVision;
 import 'package:flutter/services.dart';
 import 'package:animations/animations.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'conver_format_ml.dart';
-import 'interfaces.dart';
-import 'package:native_device_orientation/native_device_orientation.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:screen/screen.dart';
-import 'utils.dart';
-
 export 'package:camera/camera.dart' show ResolutionPreset;
-export 'interfaces.dart';
 
-// class Barcodereader {
-//   static const MethodChannel _channel = const MethodChannel('barcodereader');
+Uint8List concatenatePlanes(List<Plane> planes) {
+  final allBytes = WriteBuffer();
+  planes.forEach((plane) => allBytes.putUint8List(plane.bytes));
+  return allBytes.done().buffer.asUint8List();
+}
 
-//   static Future<String> get platformVersion async {
-//     final String version = await _channel.invokeMethod('getPlatformVersion');
-//     return version;
-//   }
-// }
-
-typedef CloseAction = void Function(Barcode barcode);
+typedef CloseAction = void Function(List<String> barcode);
 
 typedef BarcodereaderChild = Widget Function(Function tap);
 
@@ -64,7 +55,7 @@ class Barcodereader extends StatefulWidget {
   }) {
     CameraController controller;
     // String path = '';
-    return OpenContainer<Barcode>(
+    return OpenContainer<List<String>>(
       closedBuilder: (context, action) {
         return closedBuilder(() async {
           controller = await _controller(resolution);
@@ -122,17 +113,15 @@ class Barcodereader extends StatefulWidget {
     await _initCams();
     final camearDes =
         _cameras.firstWhere((c) => c.lensDirection == CameraLensDirection.back);
+    // camearDes.
     final _controller = CameraController(
       camearDes,
-
       resolution,
       enableAudio: false,
-
-      // imageFormatGroup: ImageFormatGroup.
-      // autoFocusMode: AutoFocusMode.auto,
-      // flashMode: FlashMode.off,
+      imageFormatGroup: ImageFormatGroup.yuv420,
     );
     await _controller.initialize();
+    await _controller.lockCaptureOrientation(DeviceOrientation.portraitUp);
     return _controller;
   }
 
@@ -146,58 +135,20 @@ class BarcodereaderState extends State<Barcodereader> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   bool flash = false, hasFlash = false;
   static const _CHANNEL = const MethodChannel('com.ayoub.barcodereader');
-  static final mlBarcodeDetector = MLVision.GoogleMlKit.vision.barcodeScanner();
-
-  num angle = 0.0;
-  StreamSubscription<NativeDeviceOrientation> sub;
+  // static final mlBarcodeDetector = MLVision.GoogleMlKit.vision.barcodeScanner();
 
   @override
   void initState() {
     super.initState();
-    Screen.keepOn(true);
     widget.controller.startImageStream(_streamLisnner);
+    Screen.keepOn(true);
     role();
     SystemChrome.setEnabledSystemUIOverlays([]);
-    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
-    sub = NativeDeviceOrientationCommunicator()
-        .onOrientationChanged(useSensor: true)
-        .listen(listenToOrontation);
-  }
-
-  void listenToOrontation(NativeDeviceOrientation data) {
-    switch (data) {
-      case NativeDeviceOrientation.landscapeLeft:
-        angle = pi / 2;
-        break;
-      case NativeDeviceOrientation.landscapeRight:
-        angle = -pi / 2;
-        break;
-      case NativeDeviceOrientation.portraitUp:
-        angle = 0.0;
-        break;
-      case NativeDeviceOrientation.portraitDown:
-        angle = pi;
-        break;
-      default:
-        angle = 0;
-        break;
-    }
-    setState(() {});
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   }
 
   @override
   void dispose() {
-    // final f1 = File(path);
-    // final n = path.contains('barcode1');
-    // path = path.replaceAll('barcode${n ? 1 : 2}', 'barcode${n ? 2 : 1}');
-    // final f2 = File(path);
-    // [f1, f2].forEach((f) {
-    //   try {
-    //     f.exists().then((v) => v ? f.delete() : null);
-    //   } catch (err) {}
-    // });
-
-    sub?.cancel();
     timer?.cancel();
     _dispose();
     super.dispose();
@@ -219,17 +170,10 @@ class BarcodereaderState extends State<Barcodereader> {
     ]);
   }
 
-  // void _initCameras() async {
-  //   // hasFlash = await widget.controller.hasFlash;
-  //   // flash = widget.controller.flashMode != FlashMode.off;
-  //   flash = false;
-  //   // widget.controller.setFlashMode(!flash ? FlashMode.torch : FlashMode.off);
-  //   setState(() {});
+  // Widget _rotate({Widget child}) {
+  //   final angle = widget.controller.description.sensorOrientation * pi / 180;
+  //   return Transform.rotate(child: child, angle: angle);
   // }
-
-  Widget _rotate({Widget child}) {
-    return Transform.rotate(child: child, angle: angle);
-  }
 
   showSnackBar(String str) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -242,11 +186,6 @@ class BarcodereaderState extends State<Barcodereader> {
   }
 
   _flash() async {
-    // final status = await widget.controller.hasFlash;
-    // if (status)
-    //   widget.controller
-    //       .setFlash(mode: !flash ? FlashMode.torch : FlashMode.off);
-    // flash = !flash;
     widget.controller.setFlashMode(!flash ? FlashMode.torch : FlashMode.off);
     flash = !flash;
     setState(() {});
@@ -278,7 +217,7 @@ class BarcodereaderState extends State<Barcodereader> {
                   width: constraints.maxWidth,
                   height: constraints.maxHeight,
                   child: FittedBox(
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                     child: SizedBox(
                       height: height,
                       width: width,
@@ -294,9 +233,10 @@ class BarcodereaderState extends State<Barcodereader> {
                     padding: EdgeInsets.all(12),
                     child: IconButton(
                         color: Colors.white,
-                        icon: _rotate(
-                          child: Icon(flash ? Icons.flash_on : Icons.flash_off),
-                        ),
+                        // icon: _rotate(
+                        //   child: Icon(flash ? Icons.flash_on : Icons.flash_off),
+                        // ),
+                        icon: Icon(flash ? Icons.flash_on : Icons.flash_off),
                         onPressed: _flash),
                   ),
                 ),
@@ -371,98 +311,30 @@ class BarcodereaderState extends State<Barcodereader> {
     });
   }
 
-  // String path;
   bool tacking = false;
   bool closed = false;
 
-  // void camearStream() async {
   void _streamLisnner(CameraImage image) async {
     if (tacking) return;
     tacking = true;
-    // startImageStream
-    // try {
-    //   final f = File(path);
-    //   f.exists().then((v) => v ? f.delete() : null);
-    // } catch (err) {}
-    // final n = path.contains('barcode1');
-    // path = path.replaceAll('barcode${n ? 1 : 2}', 'barcode${n ? 2 : 1}');
     if (!mounted) return;
-    // final file = await widget.controller.takePicture();
-    if (widget.useMlVision) {
-      try {
-        final visionImage = MLVision.InputImage.fromBytes(
-          bytes: concatenatePlanes(image.planes),
-          inputImageData: buildMetaData(
-            image,
-            (() {
-              if (pi / 2 == angle)
-                return MLVision.InputImageRotation.Rotation_90deg;
-              if (-pi / 2 == angle)
-                return MLVision.InputImageRotation.Rotation_270deg;
-              if (0.0 == angle)
-                return MLVision.InputImageRotation.Rotation_0deg;
-              if (pi == angle)
-                return MLVision.InputImageRotation.Rotation_180deg;
-              return MLVision.InputImageRotation.Rotation_0deg;
-            })(),
-          ),
-        );
-
-        final barcodes = await mlBarcodeDetector.processImage(visionImage);
-        final barcode = barcodes.firstWhere((e) => true, orElse: () => null);
-        if (barcode == null) throw 'error';
-        final b = Barcode(
-          text: barcodeData(barcode).rawValue,
-          barcodeType: barcodeType2String(barcode.barcodeType),
-          timestamp: DateTime.now(),
-        );
+    try {
+      final data = await _CHANNEL.invokeListMethod<String>('barcode', {
+        'width': image.width,
+        'height': image.height,
+        'bytes': concatenatePlanes(image.planes),
+      });
+      if (data?.isNotEmpty ?? false) {
         if (!closed) {
-          widget.closeAction(b);
+          widget.closeAction(data);
           closed = true;
           widget.controller.stopImageStream();
         }
-      } catch (err) {
-        print({'err': err});
       }
-    } else {
-      try {
-        final data =
-            await _CHANNEL.invokeMapMethod<String, dynamic>('barcode', {
-          'format': image.format.raw,
-          'height': image.height,
-          'width': image.width,
-          'bytes': image.planes[0].bytes,
-          'rotation': (() {
-            if (pi / 2 == angle)
-              return MLVision.InputImageRotation.Rotation_90deg.index;
-            if (-pi / 2 == angle)
-              return MLVision.InputImageRotation.Rotation_270deg.index;
-            if (0.0 == angle)
-              return MLVision.InputImageRotation.Rotation_0deg.index;
-            if (pi == angle)
-              return MLVision.InputImageRotation.Rotation_180deg.index;
-            return MLVision.InputImageRotation.Rotation_0deg.index;
-          })(),
-          // 'planes': image.planes.map((p) {
-          //   return {
-          //     'bytes': p.bytes,
-          //     'bytesPerPixel': p.bytesPerPixel,
-          //     'bytesPerRow': p.bytesPerRow,
-          //   };
-          // }).toList(),
-        });
-        if (data != null) {
-          final barcode = Barcode.fromMap(data);
-          if (!closed) {
-            widget.closeAction(barcode);
-            closed = true;
-            widget.controller.stopImageStream();
-          }
-        }
-      } catch (err) {
-        print({'err': err});
-      }
+    } catch (err) {
+      print({'err': err});
     }
+    await Future.delayed(const Duration(milliseconds: 500));
     tacking = false;
   }
 }

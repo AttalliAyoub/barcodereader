@@ -1,8 +1,9 @@
 package com.ayoub.barcodereader
 
-import android.graphics.ImageFormat
+import android.util.Log
 import androidx.annotation.NonNull
-import com.google.zxing.*
+import com.yanzhenjie.zbar.ImageScanner
+import com.yanzhenjie.zbar.Image
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -10,66 +11,36 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 
 
-import com.google.zxing.common.HybridBinarizer
-
 /** BarcodereaderPlugin */
-class BarcodereaderPlugin: FlutterPlugin, MethodCallHandler {
+class BarcodereaderPlugin: FlutterPlugin , MethodCallHandler {
 
   private lateinit var channel : MethodChannel
-  private lateinit var reader : MultiFormatReader
+  private lateinit var imageScanner : ImageScanner
+
 
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
     channel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.ayoub.barcodereader")
     channel.setMethodCallHandler(this)
-    reader = MultiFormatReader()
+    imageScanner = ImageScanner()
   }
 
   override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
     when(call.method) {
       "barcode" -> {
-        // val path = call.argument<String>("path")!!
-        val format = call.argument<Int>("format")!!
         val height = call.argument<Int>("height")!!
         val width = call.argument<Int>("width")!!
         val bytes = call.argument<ByteArray>("bytes")!!
-        val rotation = call.argument<Int>("rotation")!!
-        val source = PlanarYUVLuminanceSource(bytes, width, height, 0, 0, width, height, false)
-        var rotated: LuminanceSource = source
-        if (source.isRotateSupported) {
-          when(rotation) {
-            1 -> rotated = source.rotateCounterClockwise()
-            2 -> rotated = source.rotateCounterClockwise()
-                    .rotateCounterClockwise()
-            3 -> rotated = source.rotateCounterClockwise()
-                    .rotateCounterClockwise()
-                    .rotateCounterClockwise()
-          }
-        }
-        val bitmap = BinaryBitmap(HybridBinarizer(if (source.isRotateSupported && rotation > 0) source else rotated))
+        val image = Image(width,height, "Y800").also { i -> i.data = bytes }
         try {
-          val r = reader.decode(bitmap)
-          if (r != null) {
-            val map = HashMap<String, Any?>()
-            map["text"] = r.text
-            val resultPoints = r.resultPoints?.map { p ->
-              hashMapOf<String, Double>("x" to p.x.toDouble(), "y" to p.y.toDouble())
-            }
-            map["resultPoints"] = resultPoints
-            map["format"] = r.barcodeFormat.toString()
-            val resultMetadata = HashMap<String, Any>()
-            if (r.resultMetadata != null) {
-              for (v in r.resultMetadata) {
-                resultMetadata["v.key.toString()"] = v.value
-              }
-              map["resultMetadata"] = resultMetadata
-            }
-            map["timestamp"] = r.timestamp
-            result.success(map)
+          val r = imageScanner.scanImage(image)
+          if (r != 0) {
+            val results = imageScanner.results.map { result -> result.data }
+            result.success(results)
           } else result.success(null)
-        } catch (e: NotFoundException) {
-          result.success(null)
+        } catch(e: Exception) {
+          result.error(e.cause.toString(), e.message, e)
         } finally {
-          reader.reset()
+          // imageScanner.destroy()
         }
       }
       else -> result.notImplemented()
