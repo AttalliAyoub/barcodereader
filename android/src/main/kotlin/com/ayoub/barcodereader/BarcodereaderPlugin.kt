@@ -9,6 +9,7 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import kotlin.math.absoluteValue
 
 
 /** BarcodereaderPlugin */
@@ -34,7 +35,15 @@ class BarcodereaderPlugin: FlutterPlugin , MethodCallHandler {
         try {
           val r = imageScanner.scanImage(image)
           if (r != 0) {
-            val results = imageScanner.results.map { result -> result.data }
+            val results = imageScanner.results.map { result -> mapOf<String, Any>(
+              "text" to result.data,
+              "format" to result.type.absoluteValue,
+              "bounds" to result.bounds.asList(),
+              "count" to result.count.absoluteValue,
+              "dataBytes" to result.dataBytes.asList(),
+              "orientation" to result.orientation.absoluteValue,
+              "quality" to result.quality.absoluteValue
+            ) }
             result.success(results)
           } else result.success(null)
         } catch(e: Exception) {

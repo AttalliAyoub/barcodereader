@@ -11,7 +11,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  List<String> barcode;
+  List<Barcode> barcodes;
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -25,7 +25,6 @@ class _MyAppState extends State<MyApp> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Barcodereader.widget(
-                useMlVision: false,
                 resolution: ResolutionPreset.high,
                 closedShape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
@@ -44,36 +43,13 @@ class _MyAppState extends State<MyApp> {
                 },
                 closeAction: (barcode) {
                   setState(() {
-                    this.barcode = barcode;
-                  });
-                },
-              ),
-              Barcodereader.widget(
-                useMlVision: true,
-                resolution: ResolutionPreset.high,
-                closedShape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-                closedBuilder: (open) {
-                  return TextButton(
-                    style: TextButton.styleFrom(
-                      textStyle: TextStyle(color: Colors.white),
-                      onSurface: Theme.of(context).primaryColor,
-                      minimumSize: Size.fromHeight(60),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                    onPressed: open,
-                    child: Text('Open Scanner ML'),
-                  );
-                },
-                closeAction: (barcode) {
-                  setState(() {
-                    this.barcode = barcode;
+                    this.barcodes = barcode;
                   });
                 },
               ),
               SizedBox(height: 20),
-              Text('$barcode'),
+              for (final barcode in barcodes ?? <Barcode>[])
+                Text('${barcode.map}'),
             ],
           ),
         ),

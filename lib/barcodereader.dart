@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui';
+import 'package:barcodereader/interfaces.dart';
 import 'package:flutter/services.dart';
 import 'package:animations/animations.dart';
 import 'package:camera/camera.dart';
@@ -10,6 +11,8 @@ import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:screen/screen.dart';
 export 'package:camera/camera.dart' show ResolutionPreset;
+export 'formats.dart' show Format, format2String;
+export 'interfaces.dart' show Barcode;
 
 Uint8List concatenatePlanes(List<Plane> planes) {
   final allBytes = WriteBuffer();
@@ -17,16 +20,14 @@ Uint8List concatenatePlanes(List<Plane> planes) {
   return allBytes.done().buffer.asUint8List();
 }
 
-typedef CloseAction = void Function(List<String> barcode);
+typedef CloseAction = void Function(List<Barcode> barcodes);
 
 typedef BarcodereaderChild = Widget Function(Function tap);
 
 class Barcodereader extends StatefulWidget {
   final CameraController controller;
   final CloseAction closeAction;
-  final bool useMlVision;
-  Barcodereader(this.controller, this.closeAction,
-      {this.useMlVision = false, Key key})
+  Barcodereader(this.controller, this.closeAction, {Key key})
       : assert(controller?.value != null),
         super(key: key);
 
@@ -48,14 +49,13 @@ class Barcodereader extends StatefulWidget {
     @required CloseAction closeAction,
     // Widget loading,
     bool tappable = true,
-    bool useMlVision = false,
     ResolutionPreset resolution = ResolutionPreset.medium,
     Duration transitionDuration = const Duration(milliseconds: 300),
     ContainerTransitionType transitionType = ContainerTransitionType.fade,
   }) {
     CameraController controller;
     // String path = '';
-    return OpenContainer<List<String>>(
+    return OpenContainer<List<Barcode>>(
       closedBuilder: (context, action) {
         return closedBuilder(() async {
           controller = await _controller(resolution);
@@ -74,7 +74,6 @@ class Barcodereader extends StatefulWidget {
         return Barcodereader(
           controller,
           (baarcode) => action(returnValue: baarcode),
-          useMlVision: useMlVision,
         );
       },
       useRootNavigator: false,
@@ -319,14 +318,20 @@ class BarcodereaderState extends State<Barcodereader> {
     tacking = true;
     if (!mounted) return;
     try {
-      final data = await _CHANNEL.invokeListMethod<String>('barcode', {
+      final barcodes = await _CHANNEL.invokeListMethod<Map>('barcode', {
         'width': image.width,
         'height': image.height,
         'bytes': concatenatePlanes(image.planes),
+      }).then((value) {
+        try {
+          return List.from(value).map((e) => Barcode.fromMap(e)).toList();
+        } catch (err) {
+          return null;
+        }
       });
-      if (data?.isNotEmpty ?? false) {
+      if (barcodes?.isNotEmpty ?? false) {
         if (!closed) {
-          widget.closeAction(data);
+          widget.closeAction(barcodes);
           closed = true;
           widget.controller.stopImageStream();
         }
