@@ -12,8 +12,10 @@ dependencies:
   flutter:
     sdk: flutter
   animations: ^2.0.0
-  camera: ^0.8.1
-  screen: ^0.0.5
+  camera: ^0.8.1+1
+  screen:
+    git:
+      url: https://github.com/AttalliAyoub/flutter_screen.git
   # scan: ^1.4.3
   # zxing2: ^0.1.0
 
