@@ -26,7 +26,6 @@ apply plugin: 'kotlin-android'
 
 android {
     compileSdkVersion 29
-
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
     }
@@ -40,5 +39,10 @@ android {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation group: 'com.yanzhenjie.zbar', name: 'zbar', version: '1.0.0'
+    implementation "com.yanzhenjie.zbar:zbar:1.0.0"
+    implementation 'com.google.zxing:android-integration:3.3.0'
+    implementation 'com.google.zxing:android-core:3.3.0'
+    implementation 'com.google.zxing:javase:3.4.1'
+    implementation 'com.google.zxing:core:3.4.1'
+
 }

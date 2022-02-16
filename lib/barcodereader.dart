@@ -1,16 +1,16 @@
 import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
-import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:barcodereader/interfaces.dart';
 import 'package:flutter/services.dart';
 import 'package:animations/animations.dart';
 import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:rxdart/rxdart.dart';
-import 'package:screen/screen.dart';
+import 'package:wakelock/wakelock.dart';
 export 'package:camera/camera.dart' show ResolutionPreset;
+
+import 'behavior_subject/behavior_subject.dart';
 export 'formats.dart' show Format, format2String;
 export 'interfaces.dart' show Barcode;
 
@@ -20,15 +20,16 @@ Uint8List concatenatePlanes(List<Plane> planes) {
   return allBytes.done().buffer.asUint8List();
 }
 
-typedef CloseAction = void Function(List<Barcode> barcodes);
+typedef CloseAction = void Function(List<Barcode>? barcodes);
 
-typedef BarcodereaderChild = Widget Function(Function tap);
+typedef BarcodereaderChild = Widget Function(VoidCallback tap);
 
 class Barcodereader extends StatefulWidget {
   final CameraController controller;
   final CloseAction closeAction;
-  Barcodereader(this.controller, this.closeAction, {Key key})
-      : assert(controller?.value != null),
+  Barcodereader(this.controller, this.closeAction, {Key? key})
+      :
+        // assert(controller.value != null),
         super(key: key);
 
   // static Future<String> get platformVersion async {
@@ -37,7 +38,7 @@ class Barcodereader extends StatefulWidget {
   // }
 
   static Widget widget({
-    Key key,
+    Key? key,
     Color closedColor = Colors.white,
     Color openColor = Colors.white,
     double closedElevation = 1.0,
@@ -45,15 +46,15 @@ class Barcodereader extends StatefulWidget {
     ShapeBorder closedShape = const RoundedRectangleBorder(
         borderRadius: BorderRadius.all(Radius.circular(4.0))),
     ShapeBorder openShape = const RoundedRectangleBorder(),
-    @required BarcodereaderChild closedBuilder,
-    @required CloseAction closeAction,
+    required BarcodereaderChild closedBuilder,
+    required CloseAction closeAction,
     // Widget loading,
     bool tappable = true,
     ResolutionPreset resolution = ResolutionPreset.medium,
     Duration transitionDuration = const Duration(milliseconds: 300),
     ContainerTransitionType transitionType = ContainerTransitionType.fade,
   }) {
-    CameraController controller;
+    late CameraController controller;
     // String path = '';
     return OpenContainer<List<Barcode>>(
       closedBuilder: (context, action) {
@@ -70,7 +71,7 @@ class Barcodereader extends StatefulWidget {
         });
       },
       openBuilder: (context, action) {
-        assert(controller?.value != null);
+        // assert(controller?.value != null);
         return Barcodereader(
           controller,
           (baarcode) => action(returnValue: baarcode),
@@ -95,8 +96,9 @@ class Barcodereader extends StatefulWidget {
 
   static Future<void> _initCams() async {
     try {
-      if (_cameras == null || (_cameras?.isEmpty ?? true))
+      if (_cameras.isEmpty) {
         _cameras = await availableCameras();
+      }
     } catch (err) {
       print(err);
     }
@@ -121,6 +123,7 @@ class Barcodereader extends StatefulWidget {
     );
     await _controller.initialize();
     await _controller.lockCaptureOrientation(DeviceOrientation.portraitUp);
+    await _controller.setFocusMode(FocusMode.locked);
     return _controller;
   }
 
@@ -140,15 +143,17 @@ class BarcodereaderState extends State<Barcodereader> {
   void initState() {
     super.initState();
     widget.controller.startImageStream(_streamLisnner);
-    Screen.keepOn(true);
+    // Screen.keepOn(true);
+    Wakelock.enable();
     role();
-    SystemChrome.setEnabledSystemUIOverlays([]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   }
 
   @override
   void dispose() {
-    timer?.cancel();
+    timer.cancel();
+    align.close();
     _dispose();
     super.dispose();
   }
@@ -162,10 +167,12 @@ class BarcodereaderState extends State<Barcodereader> {
     await widget.controller.setFlashMode(FlashMode.off);
     await widget.controller.dispose();
     await Future.wait([
-      Screen.keepOn(false),
+      // Screen.keepOn(false),
+      Wakelock.disable(),
       SystemChrome.setPreferredOrientations(
           [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]),
-      SystemChrome.setEnabledSystemUIOverlays(SystemUiOverlay.values),
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+          overlays: SystemUiOverlay.values),
     ]);
   }
 
@@ -178,7 +185,7 @@ class BarcodereaderState extends State<Barcodereader> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(str),
       action: SnackBarAction(
-        label: 'Dismiss',
+        label: MaterialLocalizations.of(context).modalBarrierDismissLabel,
         onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
       ),
     ));
@@ -189,6 +196,9 @@ class BarcodereaderState extends State<Barcodereader> {
     flash = !flash;
     setState(() {});
   }
+
+  Future focuseFuture = Future.delayed(const Duration(milliseconds: 500));
+  TapDownDetails focuseTap = TapDownDetails(globalPosition: Offset.zero);
 
   @override
   Widget build(BuildContext context) {
@@ -225,6 +235,89 @@ class BarcodereaderState extends State<Barcodereader> {
                   ),
                 ),
               ),
+
+              Align(
+                alignment: Alignment.center,
+                child: StreamBuilder(
+                  stream: align,
+                  initialData: align.value,
+                  builder: (_, AsyncSnapshot<AlignmentGeometry> snap) {
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      width: mino * .9,
+                      height: mino * .9 / 2,
+                      alignment: snap.data,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: Container(
+                        color: Colors.red,
+                        width: mino * .9,
+                        height: 3,
+                      ),
+                    );
+                  },
+                ),
+              ),
+              FutureBuilder(
+                future: focuseFuture,
+                builder: (context, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return Positioned(
+                      left: focuseTap.globalPosition.dx,
+                      top: focuseTap.globalPosition.dy,
+                      child: Container(
+                        height: 50,
+                        width: 50,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.grey,
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                      ),
+                    );
+                  }
+                  return Text('');
+                },
+              ),
+
+              GestureDetector(
+                onTapDown: (details) {
+                  final size = MediaQuery.of(context).size;
+                  // print({
+                  //   'width': MediaQuery.of(context).size.width,
+                  //   'height': MediaQuery.of(context).size.height,
+                  //   'globalPosition': details.globalPosition,
+                  //   'x': details.globalPosition.dx,
+                  // });
+                  widget.controller.setFocusPoint(
+                    Offset(
+                      details.globalPosition.dx / size.width,
+                      details.globalPosition.dy / size.height,
+                    ),
+                  );
+                  setState(() {
+                    focuseTap = details;
+                    focuseFuture =
+                        Future.delayed(const Duration(milliseconds: 500));
+                  });
+                },
+              ),
+              // IconButton(
+              //   color: Colors.white,
+              //   icon: Icon(Icons.camera),
+              //   onPressed: isTacking ? null : _captureImage,
+              // ),
+              // IconButton(
+              //   color: Colors.white,
+              //   icon: Icon(Icons.switch_camera),
+              //   onPressed: _swithcCam,
+
+              // ),
+
               Align(
                 alignment: Alignment.topLeft,
                 child: SafeArea(
@@ -254,51 +347,14 @@ class BarcodereaderState extends State<Barcodereader> {
                   ),
                 ),
               ),
-
-              Align(
-                alignment: Alignment.center,
-                child: StreamBuilder(
-                  stream: align,
-                  initialData: align.value,
-                  builder: (_, AsyncSnapshot<AlignmentGeometry> snap) {
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      width: mino * .9,
-                      height: mino * .9 / 2,
-                      alignment: snap.data,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      child: Container(
-                        color: Colors.red,
-                        width: mino * .9,
-                        height: 3,
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-              // IconButton(
-              //   color: Colors.white,
-              //   icon: Icon(Icons.camera),
-              //   onPressed: isTacking ? null : _captureImage,
-              // ),
-              // IconButton(
-              //   color: Colors.white,
-              //   icon: Icon(Icons.switch_camera),
-              //   onPressed: _swithcCam,
-              // ),
             ],
           );
         }));
   }
 
-  final BehaviorSubject<AlignmentGeometry> align =
-      BehaviorSubject<AlignmentGeometry>.seeded(Alignment.topCenter);
+  final align = BehaviorSubject<AlignmentGeometry>.seeded(Alignment.topCenter);
 
-  Timer timer;
+  late Timer timer;
 
   void role() {
     timer = Timer.periodic(const Duration(milliseconds: 300), (t) {
@@ -321,9 +377,12 @@ class BarcodereaderState extends State<Barcodereader> {
       final barcodes = await _CHANNEL.invokeListMethod<Map>('barcode', {
         'width': image.width,
         'height': image.height,
-        'bytes': concatenatePlanes(image.planes),
+        'bytes': image.planes.first.bytes,
+        // 'bytes': concatenatePlanes(image.planes),
+        // 'bytes': rotate(image.planes.first),
       }).then((value) {
         try {
+          if (value == null) return null;
           return List.from(value).map((e) => Barcode.fromMap(e)).toList();
         } catch (err) {
           return null;

@@ -75,5 +75,6 @@ Format int2format(int code) {
     case 128:
       return Format.CODE128;
     default:
+      return Format.NONE;
   }
 }

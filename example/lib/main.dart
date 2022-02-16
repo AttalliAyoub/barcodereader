@@ -3,16 +3,19 @@ import 'package:barcodereader/barcodereader.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
+  const MyApp({Key? key}) : super(key: key);
+
   @override
   _MyAppState createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
-  List<Barcode> barcodes;
+  List<Barcode>? barcodes;
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -32,23 +35,23 @@ class _MyAppState extends State<MyApp> {
                 closedBuilder: (open) {
                   return TextButton(
                     style: TextButton.styleFrom(
-                      textStyle: TextStyle(color: Colors.white),
+                      textStyle: const TextStyle(color: Colors.white),
                       onSurface: Theme.of(context).primaryColor,
-                      minimumSize: Size.fromHeight(60),
+                      minimumSize: const Size.fromHeight(60),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10)),
                     ),
                     onPressed: open,
-                    child: Text('Open Scanner Kotlin'),
+                    child: const Text('Open Scanner Kotlin'),
                   );
                 },
                 closeAction: (barcode) {
                   setState(() {
-                    this.barcodes = barcode;
+                    barcodes = barcode;
                   });
                 },
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               for (final barcode in barcodes ?? <Barcode>[])
                 Text('${barcode.map}'),
             ],
