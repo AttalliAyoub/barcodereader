@@ -11,9 +11,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  animations: ^2.0.0
-  camera: ^0.9.4+12
-  wakelock: ^0.6.1+1
+  animations: ^2.0.7
+  camera: ^0.10.0+3
+  wakelock: ^0.6.2
   # image: ^3.1.1
   # exif: ^3.1.1
   # scan: ^1.4.3
